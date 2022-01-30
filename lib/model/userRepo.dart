@@ -1,9 +1,9 @@
 import 'dart:convert';
 
 import 'package:istreamo/model/owner.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:hive/hive.dart';
 import 'owner.dart';
-import 'company.dart';
+part 'userRepo.g.dart';
 
 List<UserRepo> usersFromJson(String str) =>
     List<UserRepo>.from(json.decode(str).map((x) => UserRepo.fromJson(x)));
@@ -11,13 +11,22 @@ List<UserRepo> usersFromJson(String str) =>
 String usersToJson(List<UserRepo> data) =>
     json.encode(List<dynamic>.from(data.map((x) => x.toJson())));
 
-class UserRepo {
+
+@HiveType(typeId: 0)
+class UserRepo extends HiveObject {
+  @HiveField(0)
   int id;
+  @HiveField(1)
   String name;
+  @HiveField(2)
   String fullName;
+  @HiveField(3)
   String description;
+  @HiveField(4)
   Owner owner;
+  @HiveField(5)
   String language;
+  @HiveField(6)
   int forksCount;
 
   UserRepo(

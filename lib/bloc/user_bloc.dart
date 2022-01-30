@@ -1,82 +1,80 @@
 import 'dart:io';
 
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hive/hive.dart';
 import 'package:istreamo/bloc/user_events.dart';
 import 'package:istreamo/bloc/user_states.dart';
+import 'package:istreamo/client/hive_names.dart';
 import 'package:istreamo/model/userRepo.dart';
-import 'package:istreamo/repo/database_repo.dart';
 import 'package:istreamo/repo/network_call.dart';
-import 'package:istreamo/repo/notification_api.dart';
-import 'package:sqflite/sqflite.dart';
 
 class UsersBloc extends Bloc<UsersEvents, UsersState> {
   final UserRepository usersRepository;
-  List<UserRepo> _users;
-  List<Map> _searchedUsers;
+  final List<UserRepo> _users = [];
+  final List<UserRepo> _searchedUsers=[];
+  int _pageNumber = 0;
 
-  Database db;
+
 
   UsersBloc({@required this.usersRepository}) : super(UsersInitialState());
 
   @override
   Stream<UsersState> mapEventToState(UsersEvents event) async* {
-    if (event is FetchUsers) {
-      await _initializeDataBase();
-      yield UsersLoadingState();
-
+    if (event is FetchUserReposFromNetwork) {
+      _pageNumber++;
+        yield UsersLoadingState();
       try {
-        _users = await UserRepository.getUser();
-        _saveData(_users);
-        yield UsersLoadedState(users: _users);
+        _users.addAll( await UserRepository.getUser(_pageNumber));
+        _users.isEmpty? add(FetchUserReposFromDataBase()):null;
+        if(_users.isNotEmpty){
+          _searchedUsers.clear();
+          _saveData(_users);
+        }
+        yield UserReposFromNetworkLoadedState(users: _users);
       } on SocketException {
-        yield UsersListErrorstate(
+        yield UsersListErrorState(
           error: ('No Internet'),
         );
       } on HttpException {
-        yield UsersListErrorstate(
+        yield UsersListErrorState(
           error: ('No Service'),
         );
       } on FormatException {
-        yield UsersListErrorstate(
+        yield UsersListErrorState(
           error: ('No Format Exception'),
         );
       } catch (e) {
-        yield UsersListErrorstate(
+        yield UsersListErrorState(
           error: ('Un Known Error ${e.toString()}'),
         );
       }
-    } else if (event is StartSearch) {
-      await _getSearchedUsers(event.searchPrhase);
-      yield UsersSearchingState(searchedUsers: _searchedUsers);
-    } else if (event is ShowNotification) {
-      await _showNotification();
-      yield UserTappedNotification();
+    } else if (event is FetchUserReposFromDataBase) {
+      await _getSearchedUsers();
+      yield DatabaseUserRepoLoaded(databaseUsers: _searchedUsers);
     }
   }
 
-  Future<void> _initializeDataBase() async {
-    await Repository().open();
-    db = Repository().db;
-  }
 
-  Future<void> _showNotification() async {
-    await NotificationApi.showNotification(
-        id: 0,
-        title: "Adarsh's simple Notification",
-        body: "Hey there! This notification was created by Adarsh",
-        payload: 'Adarsh.Ag');
-  }
-
-  _saveData(data) async {
+  _saveData(List<UserRepo> data) async {
     for (var item in data) {
-      // await UserRepo.insert(db, item);
+      Box<UserRepo> contactsBox = Hive.box<UserRepo>(HiveBoxes.userRepo);
+      contactsBox.add(UserRepo(
+          description: item.description,
+          forksCount: item.forksCount,
+          id: item.id,
+          fullName: item.fullName,
+          language: item.language,
+          name: item.name,
+          owner: item.owner));
     }
   }
 
-  _getSearchedUsers(searchedPhrase) async {
-    // _searchedUsers =
-    //     await UserRepo.getItems(db, name: searchedPhrase, id: searchedPhrase);
+  _getSearchedUsers() async {
+    Box<UserRepo> data = Hive.box<UserRepo>(HiveBoxes.userRepo);
+    if (data.values.isEmpty)return;
+    for(var item in data.values){
+      _searchedUsers.add(item);
+    }
   }
 }

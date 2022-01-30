@@ -11,19 +11,18 @@ class UsersLoadingState extends UsersState {}
 
 class UsersInitialState extends UsersState {}
 
-class UsersLoadedState extends UsersState {
+class UserReposFromNetworkLoadedState extends UsersState {
   final List<UserRepo> users;
-  UsersLoadedState({@required this.users});
+  UserReposFromNetworkLoadedState({@required this.users});
 }
 
-class UsersSearchingState extends UsersState {
-  final List<Map> searchedUsers;
-  UsersSearchingState({@required this.searchedUsers});
+class DatabaseUserRepoLoaded extends UsersState {
+  final List<UserRepo> databaseUsers;
+  DatabaseUserRepoLoaded({@required this.databaseUsers});
 }
 
-class UsersListErrorstate extends UsersState {
+class UsersListErrorState extends UsersState {
   final error;
-  UsersListErrorstate({this.error});
+  UsersListErrorState({this.error});
 }
 
-class UserTappedNotification extends UsersState {}
